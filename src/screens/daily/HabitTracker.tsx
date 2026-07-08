@@ -7,7 +7,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { ink, radius, shadows, space, status, white } from '@/theme/tokens';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
-import { ScreenTitle } from '@/ui/common';
+import { EmptyState, ScreenTitle } from '@/ui/common';
 import { Icon } from '@/ui/Icon';
 import { IconButton } from '@/ui/IconButton';
 import { Input } from '@/ui/Input';
@@ -94,6 +94,7 @@ export function HabitTracker(_: ScreenProps) {
 
       {/* habit cards */}
       <View style={{ gap: 10, marginTop: 16 }}>
+        {habits.length === 0 && <EmptyState icon="flame" text={t('habits.empty')} />}
         {habits.map((h) => {
           // rotate week (last 7 days ending today) so it displays Mon..Sun
           const display: (0 | 1 | null)[] = Array(7).fill(null);

@@ -17,13 +17,25 @@ import { Txt } from '@/ui/Txt';
 
 const TONES: ChipTone[] = ['accent', 'info', 'warning', 'neutral'];
 
-export function Directory(_: ScreenProps) {
+export function Directory({ go }: ScreenProps) {
   const { c } = useTheme();
   const { t } = useI18n();
   const { activeProject, contacts, addContact, deleteContact } = useWork();
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ name: '', role: '', phone: '', note: '' });
+
+  if (!activeProject) {
+    return (
+      <View style={{ flex: 1, paddingHorizontal: space.screenPad, paddingTop: 20 }}>
+        <Eyebrow>{t('dir.eyebrow')}</Eyebrow>
+        <EmptyState icon="user" text={t('work.needProject')} />
+        <Button variant="primary" full icon="briefcase" onPress={() => go('whome')}>
+          {t('work.goToProjects')}
+        </Button>
+      </View>
+    );
+  }
 
   const q = query.trim().toLowerCase();
   const filtered = q

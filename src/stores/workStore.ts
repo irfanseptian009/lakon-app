@@ -112,6 +112,20 @@ function activeProjectId(): number | null {
   return row?.id ?? null;
 }
 
+/** Re-derive each milestone's Gantt bar as an equal date-ordered slice of 0–100%. */
+function recomputeMilestoneBars(projectId: number) {
+  const rows = db.getAllSync<{ id: number }>(
+    'SELECT id FROM milestones WHERE project_id = ? ORDER BY date, id', projectId
+  );
+  const n = rows.length;
+  rows.forEach((r, i) => {
+    db.runSync(
+      'UPDATE milestones SET bar_start = ?, bar_end = ? WHERE id = ?',
+      Math.round((i / n) * 100), Math.round(((i + 1) / n) * 100), r.id
+    );
+  });
+}
+
 export const useWork = create<WorkState>((set, get) => ({
   projects: [],
   activeProject: null,
@@ -133,11 +147,7 @@ export const useWork = create<WorkState>((set, get) => ({
     const cardRows = db.getAllSync<any>(
       'SELECT * FROM kanban_cards WHERE project_id = ? ORDER BY sort, id', pid
     );
-    // milestones live on whichever project has them; show active project's first, else any
-    let msRows = db.getAllSync<any>('SELECT * FROM milestones WHERE project_id = ? ORDER BY date', pid);
-    if (msRows.length === 0) {
-      msRows = db.getAllSync<any>('SELECT * FROM milestones ORDER BY date');
-    }
+    const msRows = db.getAllSync<any>('SELECT * FROM milestones WHERE project_id = ? ORDER BY date', pid);
     const contactRows = db.getAllSync<any>('SELECT * FROM contacts WHERE project_id = ? ORDER BY id', pid);
     const memoRows = db.getAllSync<any>('SELECT * FROM memos ORDER BY created_at DESC');
     const minuteRows = db.getAllSync<any>('SELECT * FROM minutes ORDER BY date DESC');
@@ -221,13 +231,13 @@ export const useWork = create<WorkState>((set, get) => ({
   },
 
   addMilestone: (title, date, notifIds) => {
-    const ms = get().milestones;
-    const pid = ms[0]?.projectId ?? activeProjectId();
+    const pid = activeProjectId();
     if (pid == null) return;
     db.runSync(
-      "INSERT INTO milestones (project_id, title, date, status, bar_start, bar_end, notif_ids) VALUES (?,?,?,'todo',74,100,?)",
+      "INSERT INTO milestones (project_id, title, date, status, bar_start, bar_end, notif_ids) VALUES (?,?,?,'todo',0,100,?)",
       pid, title, date, notifIds ? JSON.stringify(notifIds) : null
     );
+    recomputeMilestoneBars(pid);
     get().load();
   },
 
@@ -237,7 +247,9 @@ export const useWork = create<WorkState>((set, get) => ({
   },
 
   deleteMilestone: (id) => {
+    const row = db.getFirstSync<{ project_id: number }>('SELECT project_id FROM milestones WHERE id = ?', id);
     db.runSync('DELETE FROM milestones WHERE id = ?', id);
+    if (row) recomputeMilestoneBars(row.project_id);
     get().load();
     return null;
   },

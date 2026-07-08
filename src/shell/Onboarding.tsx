@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '@/i18n/useI18n';
+import { useSettings } from '@/stores/appStore';
 import { ink, lime } from '@/theme/tokens';
 import { Button } from '@/ui/Button';
+import { Input } from '@/ui/Input';
 import { Txt } from '@/ui/Txt';
 import { LogoMark } from './LogoMark';
 
@@ -11,6 +13,14 @@ import { LogoMark } from './LogoMark';
 export function Onboarding({ onStart }: { onStart: () => void }) {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const [step, setStep] = useState<'intro' | 'name'>('intro');
+  const [name, setName] = useState('');
+
+  const finish = () => {
+    const trimmed = name.trim();
+    if (trimmed) useSettings.getState().setUserName(trimmed);
+    onStart();
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: ink[900] }}>
@@ -56,25 +66,48 @@ export function Onboarding({ onStart }: { onStart: () => void }) {
           <LogoMark size={82} />
         </View>
 
-        <View>
-          <Txt size={42} weight="black" color="#FFFFFF" letterSpacing={-1.26} lineHeight={44}>
-            {t('ob.title1')}
-            {'\n'}
-            {t('ob.title2')}
-            {'\n'}
-            <Txt size={42} weight="black" color={lime[400]} letterSpacing={-1.26}>
-              {t('ob.title3')}
+        {step === 'intro' ? (
+          <View>
+            <Txt size={42} weight="black" color="#FFFFFF" letterSpacing={-1.26} lineHeight={44}>
+              {t('ob.title1')}
+              {'\n'}
+              {t('ob.title2')}
+              {'\n'}
+              <Txt size={42} weight="black" color={lime[400]} letterSpacing={-1.26}>
+                {t('ob.title3')}
+              </Txt>
             </Txt>
-          </Txt>
-          <Txt size={15.5} color="#9AA0AA" lineHeight={23} style={{ marginTop: 16, maxWidth: 310 }}>
-            {t('ob.sub')}
-          </Txt>
-          <View style={{ marginTop: 26 }}>
-            <Button variant="primary" size="lg" full icon="arrow-right" onPress={onStart}>
-              {t('ob.cta')}
-            </Button>
+            <Txt size={15.5} color="#9AA0AA" lineHeight={23} style={{ marginTop: 16, maxWidth: 310 }}>
+              {t('ob.sub')}
+            </Txt>
+            <View style={{ marginTop: 26 }}>
+              <Button variant="primary" size="lg" full icon="arrow-right" onPress={() => setStep('name')}>
+                {t('ob.cta')}
+              </Button>
+            </View>
           </View>
-        </View>
+        ) : (
+          <View>
+            <Txt size={30} weight="black" color="#FFFFFF" letterSpacing={-0.6} lineHeight={34}>
+              {t('ob.nameLabel')}
+            </Txt>
+            <View style={{ marginTop: 20 }}>
+              <Input
+                value={name}
+                onChangeText={setName}
+                placeholder={t('ob.namePlaceholder')}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={finish}
+              />
+            </View>
+            <View style={{ marginTop: 20 }}>
+              <Button variant="primary" size="lg" full icon="arrow-right" onPress={finish} disabled={!name.trim()}>
+                {t('ob.nameCta')}
+              </Button>
+            </View>
+          </View>
+        )}
       </View>
     </View>
   );

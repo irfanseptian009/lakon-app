@@ -171,10 +171,21 @@ export function ComparisonBoard(_: ScreenProps) {
   const { c } = useTheme();
   const { t } = useI18n();
   const toast = useToast();
-  const { groups, selectOption, addOption, deleteOption, addOptionMedia, promoteSelected } = useTravel();
-  const group = groups[0];
+  const { groups, addGroup, selectOption, addOption, deleteOption, addOptionMedia, promoteSelected } = useTravel();
+  const [groupIdx, setGroupIdx] = useState(0);
+  const group = groups[Math.min(groupIdx, Math.max(groups.length - 1, 0))];
   const [adding, setAdding] = useState(false);
+  const [addingGroup, setAddingGroup] = useState(false);
   const [form, setForm] = useState({ name: '', price: '', unit: '/bulan', fac: '', pros: '', cons: '' });
+  const [groupForm, setGroupForm] = useState({ title: '', location: '' });
+
+  const submitGroup = () => {
+    if (!groupForm.title.trim()) return;
+    addGroup(groupForm.title.trim(), groupForm.location.trim());
+    setGroupForm({ title: '', location: '' });
+    setAddingGroup(false);
+    setGroupIdx(0); // newest group sorts first
+  };
 
   const submit = () => {
     if (!group || !form.name.trim()) return;
@@ -225,12 +236,25 @@ export function ComparisonBoard(_: ScreenProps) {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: 10,
           paddingTop: 8,
           paddingBottom: 4,
         }}
       >
-        <IconButton icon="search" variant="white" accessibilityLabel={t('nav.research')} />
-        <IconButton icon="more-horizontal" variant="ghost" accessibilityLabel="Opsi" />
+        {groups.length > 1 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {groups.map((g, i) => (
+                <Chip key={g.id} tone={i === groupIdx ? 'accent' : 'neutral'} size="sm" onPress={() => setGroupIdx(i)}>
+                  {g.title}
+                </Chip>
+              ))}
+            </View>
+          </ScrollView>
+        ) : (
+          <View style={{ flex: 1 }} />
+        )}
+        <IconButton icon="plus" variant="dark" onPress={() => setAddingGroup(true)} accessibilityLabel={t('comp.newGroup')} />
       </View>
 
       {group ? (
@@ -270,8 +294,22 @@ export function ComparisonBoard(_: ScreenProps) {
           </View>
         </>
       ) : (
-        <EmptyState icon="search" text={t('comp.empty')} />
+        <>
+          <EmptyState icon="search" text={t('comp.noGroup')} />
+          <DashedAdd label={t('comp.newGroup')} onPress={() => setAddingGroup(true)} />
+        </>
       )}
+
+      {/* new comparison group sheet */}
+      <Sheet visible={addingGroup} onClose={() => setAddingGroup(false)} title={t('comp.newGroup')}>
+        <Input label={t('comp.groupTitle')} value={groupForm.title} onChangeText={(v) => setGroupForm({ ...groupForm, title: v })} autoFocus />
+        <View style={{ height: 12 }} />
+        <Input label={t('comp.groupLocation')} value={groupForm.location} onChangeText={(v) => setGroupForm({ ...groupForm, location: v })} />
+        <View style={{ height: 16 }} />
+        <Button variant="primary" full icon="plus" onPress={submitGroup}>
+          {t('common.save')}
+        </Button>
+      </Sheet>
 
       {/* add option sheet */}
       <Sheet visible={adding} onClose={() => setAdding(false)} title={t('comp.addOption')}>

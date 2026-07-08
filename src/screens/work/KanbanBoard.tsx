@@ -7,9 +7,11 @@ import { ColKey, KanbanCard, useWork } from '@/stores/workStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { font, ink, radius, shadows, space, status } from '@/theme/tokens';
 import { Avatar } from '@/ui/Avatar';
-import { Eyebrow } from '@/ui/common';
+import { Button } from '@/ui/Button';
+import { EmptyState, Eyebrow } from '@/ui/common';
 import { Icon } from '@/ui/Icon';
 import { IconButton } from '@/ui/IconButton';
+import { Input } from '@/ui/Input';
 import { Sheet } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
 
@@ -201,12 +203,14 @@ function AddCard({ onAdd }: { onAdd: (title: string) => void }) {
   );
 }
 
-export function KanbanBoard(_: ScreenProps) {
+export function KanbanBoard({ go }: ScreenProps) {
   const { c } = useTheme();
   const { t } = useI18n();
   const userName = useSettings((s) => s.userName);
   const { activeProject, cards, advanceCard, moveCard, addCard, deleteCard } = useWork();
   const [held, setHeld] = useState<KanbanCard | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState('');
 
   const COLS: { key: ColKey; label: string; accent: string; wip: number | null }[] = [
     { key: 'todo', label: t('kanban.col.todo'), accent: c.borderStrong, wip: null },
@@ -214,6 +218,21 @@ export function KanbanBoard(_: ScreenProps) {
     { key: 'waiting', label: t('kanban.col.waiting'), accent: status.amber500, wip: null },
     { key: 'done', label: t('kanban.col.done'), accent: status.green500, wip: null },
   ];
+
+  if (!activeProject) {
+    return (
+      <View style={{ flex: 1, paddingHorizontal: space.screenPad, paddingTop: 20 }}>
+        <Eyebrow>{t('kanban.eyebrow')}</Eyebrow>
+        <EmptyState icon="bar-chart" text={t('work.needProject')} />
+        <Button variant="primary" full icon="briefcase" onPress={() => go('whome')}>
+          {t('work.goToProjects')}
+        </Button>
+      </View>
+    );
+  }
+
+  const q = query.trim().toLowerCase();
+  const filteredCards = q ? cards.filter((card) => card.title.toLowerCase().includes(q)) : cards;
 
   return (
     <View style={{ flex: 1 }}>
@@ -227,16 +246,33 @@ export function KanbanBoard(_: ScreenProps) {
             </Txt>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <IconButton icon="search" variant="ghost" size={40} accessibilityLabel="Cari" />
+            <IconButton
+              icon={searching ? 'x' : 'search'}
+              variant="ghost"
+              size={40}
+              onPress={() => {
+                setSearching((s) => !s);
+                setQuery('');
+              }}
+              accessibilityLabel={t('kanban.searchPlaceholder')}
+            />
           </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-          <Icon name="zap" size={13} color={c.limeText} />
-          <Txt size={11.5} color={c.textMuted} style={{ flex: 1 }}>
-            {t('kanban.hint')}
-          </Txt>
-        </View>
+        {searching ? (
+          <View style={{ marginTop: 10 }}>
+            <Input icon="search" shape="pill" placeholder={t('kanban.searchPlaceholder')} value={query} onChangeText={setQuery} autoFocus />
+          </View>
+        ) : (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+            <Icon name="zap" size={13} color={c.limeText} />
+            <Txt size={11.5} color={c.textMuted} style={{ flex: 1 }}>
+              {t('kanban.hint')}
+            </Txt>
+          </View>
+        )}
       </View>
+
+      {q && filteredCards.length === 0 && <EmptyState icon="search" text={t('kanban.noResults')} />}
 
       {/* columns */}
       <ScrollView
@@ -245,7 +281,7 @@ export function KanbanBoard(_: ScreenProps) {
         contentContainerStyle={{ paddingHorizontal: space.screenPad, paddingBottom: 20, gap: 12 }}
       >
         {COLS.map((col) => {
-          const list = cards.filter((card) => card.col === col.key);
+          const list = filteredCards.filter((card) => card.col === col.key);
           const wipHit = col.wip != null && list.length > col.wip;
           return (
             <View key={col.key} style={{ width: 240 }}>
@@ -275,7 +311,7 @@ export function KanbanBoard(_: ScreenProps) {
                     onHold={() => setHeld(card)}
                   />
                 ))}
-                <AddCard onAdd={(title) => addCard(col.key, title, userName)} />
+                {!searching && <AddCard onAdd={(title) => addCard(col.key, title, userName)} />}
               </ScrollView>
             </View>
           );

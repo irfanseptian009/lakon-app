@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useI18n } from '@/i18n/useI18n';
 import type { ScreenProps } from '@/shell/AppShell';
+import { useNav } from '@/stores/navStore';
 import { useSettings } from '@/stores/appStore';
 import { AgendaItem, useDaily } from '@/stores/dailyStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { ink, radius, shadows, space, status, white } from '@/theme/tokens';
 import { Avatar } from '@/ui/Avatar';
 import { Card } from '@/ui/Card';
-import { DashedAdd, SectionTitle } from '@/ui/common';
+import { DashedAdd, EmptyState, SectionTitle } from '@/ui/common';
 import { Icon } from '@/ui/Icon';
 import { IconButton } from '@/ui/IconButton';
 import { Input } from '@/ui/Input';
@@ -96,7 +97,11 @@ export function DailyToday({ go }: ScreenProps) {
             </Txt>
           </View>
         </View>
-        <IconButton icon="bell" dot accessibilityLabel="Notifikasi" />
+        <IconButton
+          icon="bell"
+          onPress={() => useNav.getState().openSettings()}
+          accessibilityLabel={t('common.notifications')}
+        />
       </View>
 
       {/* daily score + habit rings */}
@@ -184,6 +189,7 @@ export function DailyToday({ go }: ScreenProps) {
 
       {/* agenda timeline */}
       <SectionTitle style={{ marginTop: 24, marginBottom: 14 }}>{t('daily.agendaToday')}</SectionTitle>
+      {agenda.length === 0 && <EmptyState icon="calendar" text={t('daily.emptyAgenda')} />}
       {agenda.map((a, i) => {
         const isNow = i === nowIdx && !a.done;
         const meta = AREA_META[a.area];

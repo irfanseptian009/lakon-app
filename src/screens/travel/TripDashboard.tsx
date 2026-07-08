@@ -4,6 +4,7 @@ import { addDays, db, isoDate } from '@/data/db';
 import { useI18n } from '@/i18n/useI18n';
 import type { ScreenProps } from '@/shell/AppShell';
 import { useSettings } from '@/stores/appStore';
+import { useNav } from '@/stores/navStore';
 import { useTravel } from '@/stores/travelStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { ink, radius, space } from '@/theme/tokens';
@@ -143,7 +144,11 @@ export function TripDashboard({ go }: ScreenProps) {
             </Txt>
           </View>
         </View>
-        <IconButton icon="bell" dot accessibilityLabel="Notifikasi" />
+        <IconButton
+          icon="bell"
+          onPress={() => useNav.getState().openSettings()}
+          accessibilityLabel={t('common.notifications')}
+        />
       </View>
 
       {trip ? (

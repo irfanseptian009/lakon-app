@@ -25,12 +25,10 @@
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT"
       ],
-      "package": "com.abbeyrighby.lakon"
+      "package": "com.lakon.app"
     },
     "web": {
       "output": "static",
@@ -50,7 +48,8 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Lakon records offline voice memos with the microphone."
+          "microphonePermission": "Lakon records offline voice memos with the microphone.",
+          "enableBackgroundPlayback": false
         }
       ],
       "expo-sharing",
@@ -72,6 +71,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "706fb7da-a03d-4aa1-b354-ee6ff72e8f6d"
+      }
     }
   }
 }

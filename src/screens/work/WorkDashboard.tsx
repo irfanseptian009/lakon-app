@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { isoDate, addDays } from '@/data/db';
 import { useI18n } from '@/i18n/useI18n';
 import type { ScreenProps } from '@/shell/AppShell';
 import { useSettings } from '@/stores/appStore';
+import { useNav } from '@/stores/navStore';
 import { useWork } from '@/stores/workStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { radius, shadows, space, status } from '@/theme/tokens';
@@ -32,6 +32,7 @@ export function WorkDashboard({ go }: ScreenProps) {
   const [adding, setAdding] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [name, setName] = useState('');
+  const [deadline, setDeadline] = useState('');
 
   const byCol = (col: string) => cards.filter((card) => card.col === col).length;
   const doneN = byCol('done');
@@ -43,8 +44,9 @@ export function WorkDashboard({ go }: ScreenProps) {
 
   const submitProject = () => {
     if (!name.trim()) return;
-    addProject(name.trim(), isoDate(addDays(new Date(), 30)));
+    addProject(name.trim(), deadline.trim() || null);
     setName('');
+    setDeadline('');
     setAdding(false);
   };
 
@@ -77,7 +79,11 @@ export function WorkDashboard({ go }: ScreenProps) {
             </Txt>
           </View>
         </Pressable>
-        <IconButton icon="bell" dot accessibilityLabel="Notifikasi" />
+        <IconButton
+          icon="bell"
+          onPress={() => useNav.getState().openSettings()}
+          accessibilityLabel={t('common.notifications')}
+        />
       </View>
 
       {/* featured project */}
@@ -285,6 +291,8 @@ export function WorkDashboard({ go }: ScreenProps) {
       {/* new project sheet */}
       <Sheet visible={adding} onClose={() => setAdding(false)} title={t('work.newProject')}>
         <Input label={t('work.projectName')} value={name} onChangeText={setName} autoFocus />
+        <View style={{ height: 12 }} />
+        <Input label={t('work.deadline')} value={deadline} onChangeText={setDeadline} placeholder="2026-08-20" />
         <View style={{ height: 16 }} />
         <Button variant="primary" full icon="plus" onPress={submitProject}>
           {t('common.save')}

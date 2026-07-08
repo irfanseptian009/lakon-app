@@ -17,10 +17,11 @@ type Mode = 'focus' | 'short' | 'long';
 
 const MODE_MINS: Record<Mode, number> = { focus: 25, short: 5, long: 15 };
 
-export function FocusTimer(_: ScreenProps) {
+export function FocusTimer({ go }: ScreenProps) {
   const { c } = useTheme();
   const { t } = useI18n();
-  const { focusToday, logFocusSession } = useDaily();
+  const { agenda, focusToday, logFocusSession } = useDaily();
+  const currentTask = agenda.find((a) => !a.done);
   const [mode, setMode] = useState<Mode>('focus');
   const total = MODE_MINS[mode] * 60;
   const [left, setLeft] = useState(total);
@@ -76,11 +77,7 @@ export function FocusTimer(_: ScreenProps) {
 
   return (
     <View style={{ flex: 1, paddingHorizontal: space.screenPad, paddingBottom: 24 }}>
-      <ScreenTitle
-        eyebrow={t('focus.eyebrow')}
-        title={t('focus.title')}
-        right={<IconButton icon="more-horizontal" variant="ghost" size={40} accessibilityLabel="Opsi" />}
-      />
+      <ScreenTitle eyebrow={t('focus.eyebrow')} title={t('focus.title')} />
 
       <SegmentedControl
         full
@@ -94,12 +91,14 @@ export function FocusTimer(_: ScreenProps) {
         onChange={changeMode}
       />
 
-      {/* current task chip */}
-      <View style={{ alignItems: 'center', marginTop: 18 }}>
-        <Chip tone="accent" size="sm" icon="briefcase">
-          {t('focus.currentTask')}
-        </Chip>
-      </View>
+      {/* current task chip — links to the next undone agenda item, if any */}
+      {currentTask && (
+        <View style={{ alignItems: 'center', marginTop: 18 }}>
+          <Chip tone="accent" size="sm" icon="briefcase" onPress={() => go('today')}>
+            {currentTask.title}
+          </Chip>
+        </View>
+      )}
 
       {/* timer */}
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 28 }}>

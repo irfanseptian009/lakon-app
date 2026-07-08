@@ -11,7 +11,7 @@ import { space, status as st, white } from '@/theme/tokens';
 import { Badge, BadgeTone } from '@/ui/Badge';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
-import { EmptyState, ScreenTitle } from '@/ui/common';
+import { EmptyState, Eyebrow, ScreenTitle } from '@/ui/common';
 import { Icon } from '@/ui/Icon';
 import { IconButton } from '@/ui/IconButton';
 import { Input } from '@/ui/Input';
@@ -19,17 +19,27 @@ import { Sheet } from '@/ui/Sheet';
 import { useToast } from '@/ui/Toast';
 import { Txt } from '@/ui/Txt';
 
-export function Timeline(_: ScreenProps) {
+export function Timeline({ go }: ScreenProps) {
   const { c } = useTheme();
   const { t, lang } = useI18n();
   const toast = useToast();
   const notifEnabled = useSettings((s) => s.notif);
-  const { projects, milestones, addMilestone, setMilestoneStatus, deleteMilestone } = useWork();
+  const { activeProject, milestones, addMilestone, setMilestoneStatus, deleteMilestone } = useWork();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(isoDate(addDays(new Date(), 14)));
 
-  const msProject = projects.find((p) => p.id === milestones[0]?.projectId);
+  if (!activeProject) {
+    return (
+      <View style={{ flex: 1, paddingHorizontal: space.screenPad, paddingTop: 20 }}>
+        <Eyebrow>{t('tl.eyebrow')}</Eyebrow>
+        <EmptyState icon="calendar" text={t('work.needProject')} />
+        <Button variant="primary" full icon="briefcase" onPress={() => go('whome')}>
+          {t('work.goToProjects')}
+        </Button>
+      </View>
+    );
+  }
 
   const statusMeta: Record<Milestone['status'], { dot: string; bar: string; label: string; tone: BadgeTone }> = {
     done: { dot: st.green500, bar: st.green500, label: t('tl.status.done'), tone: 'success' },
@@ -91,7 +101,7 @@ export function Timeline(_: ScreenProps) {
     >
       <ScreenTitle
         eyebrow={t('tl.eyebrow')}
-        title={msProject?.name ?? '—'}
+        title={activeProject.name}
         right={<IconButton icon="plus" variant="dark" onPress={() => setAdding(true)} accessibilityLabel={t('tl.addMilestone')} />}
       />
 

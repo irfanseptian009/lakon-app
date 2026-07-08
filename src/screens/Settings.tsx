@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useI18n } from '@/i18n/useI18n';
-import { reseed } from '@/data/seed';
+import { wipeAll } from '@/data/seed';
 import { createBackup, restoreBackup } from '@/services/backup';
 import { biometricAvailable } from '@/services/biometric';
 import { generateReport, shareFile } from '@/services/pdf';
@@ -180,10 +180,19 @@ export function SettingsScreen({ onClose, onLock }: { onClose: () => void; onLoc
     }
   };
 
-  const doReset = () => {
-    reseed();
-    reloadStores();
-    toast(t('set.resetDone'));
+  const doClearData = () => {
+    Alert.alert(t('set.clearData'), t('set.clearDataConfirmBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('set.clearData'),
+        style: 'destructive',
+        onPress: () => {
+          wipeAll();
+          reloadStores();
+          toast(t('set.clearDataDone'));
+        },
+      },
+    ]);
   };
 
   return (
@@ -291,10 +300,10 @@ export function SettingsScreen({ onClose, onLock }: { onClose: () => void; onLoc
           trailing={<Icon name="chevron-right" size={18} color={c.textMuted} />}
         />
         <Row
-          icon="rotate-ccw"
-          title={t('set.resetDemo')}
-          sub={t('set.resetDemoSub')}
-          onPress={doReset}
+          icon="trash"
+          title={t('set.clearData')}
+          sub={t('set.clearDataSub')}
+          onPress={doClearData}
           trailing={<Icon name="chevron-right" size={18} color={c.textMuted} />}
           last
         />
