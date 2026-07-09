@@ -158,7 +158,7 @@ export function MeetingNotes(_: ScreenProps) {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           <Pressable
             onPress={toggleRecord}
-            accessibilityLabel="Rekam"
+            accessibilityLabel={t('meet.recordLabel')}
             style={[
               {
                 width: 56,
@@ -203,7 +203,12 @@ export function MeetingNotes(_: ScreenProps) {
       </Card>
 
       {/* memo list */}
-      <SectionTitle style={{ marginTop: 22, marginBottom: 12 }}>{t('meet.voiceMemos')}</SectionTitle>
+      <SectionTitle style={{ marginTop: 22, marginBottom: 4 }}>{t('meet.voiceMemos')}</SectionTitle>
+      {memos.length > 0 && (
+        <Txt size={11.5} color={c.textMuted} style={{ marginBottom: 8 }}>
+          {t('common.holdToDelete')}
+        </Txt>
+      )}
       <View style={{ gap: 10 }}>
         {memos.length === 0 && <EmptyState icon="mic" text={t('meet.emptyMemos')} />}
         {memos.map((m) => (
@@ -257,6 +262,7 @@ export function MeetingNotes(_: ScreenProps) {
         {t('meet.linkedMinutes')}
       </SectionTitle>
       <View style={{ gap: 12 }}>
+        {minutes.length === 0 && <EmptyState icon="file-text" text={t('meet.emptyMinutes')} />}
         {minutes.map((mn) => (
           <Pressable
             key={mn.id}

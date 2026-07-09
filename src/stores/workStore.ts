@@ -9,6 +9,7 @@ export interface Project {
   name: string;
   deadline: string | null;
   isActive: boolean;
+  coverUri: string | null;
 }
 
 export interface KanbanCard {
@@ -72,6 +73,23 @@ export interface SopTemplate {
   items: string[];
 }
 
+export interface ChecklistItem {
+  id: number;
+  cardId: number;
+  text: string;
+  done: boolean;
+  sort: number;
+}
+
+export interface CardEvent {
+  id: number;
+  cardId: number;
+  projectId: number;
+  fromCol: ColKey | null;
+  toCol: ColKey;
+  changedAt: number;
+}
+
 interface WorkState {
   projects: Project[];
   activeProject: Project | null;
@@ -81,14 +99,21 @@ interface WorkState {
   memos: Memo[];
   minutes: Minute[];
   sops: SopTemplate[];
+  checklist: ChecklistItem[];
+  cardEvents: CardEvent[];
   load: () => void;
-  addProject: (name: string, deadline: string | null) => void;
+  addProject: (name: string, deadline: string | null, coverUri: string | null) => void;
   setActiveProject: (id: number) => void;
   // kanban
   moveCard: (id: number, col: ColKey) => void;
   advanceCard: (id: number) => void;
   addCard: (col: ColKey, title: string, who: string) => void;
+  updateCard: (id: number, patch: Partial<Pick<KanbanCard, 'title' | 'labels' | 'prio' | 'due' | 'who'>>) => void;
   deleteCard: (id: number) => void;
+  // kanban checklist
+  addChecklistItem: (cardId: number, text: string) => void;
+  toggleChecklistItem: (id: number) => void;
+  deleteChecklistItem: (id: number) => void;
   // milestones
   addMilestone: (title: string, date: string, notifIds: string[] | null) => void;
   setMilestoneStatus: (id: number, status: Milestone['status']) => void;
@@ -103,6 +128,9 @@ interface WorkState {
   deleteMinute: (id: number) => void;
   // SOP
   loadSop: (sopId: number) => string | null;
+  addSopTemplate: (name: string, icon: string, items: string[]) => void;
+  updateSopTemplate: (id: number, name: string, icon: string, items: string[]) => void;
+  deleteSopTemplate: (id: number) => void;
 }
 
 function activeProjectId(): number | null {
@@ -126,6 +154,19 @@ function recomputeMilestoneBars(projectId: number) {
   });
 }
 
+/** Re-derive a card's check_done/check_total cache from its checklist items. */
+function recomputeChecklistCounts(cardId: number) {
+  const row = db.getFirstSync<{ total: number; done: number }>(
+    'SELECT COUNT(*) AS total, COALESCE(SUM(done), 0) AS done FROM card_checklist_items WHERE card_id = ?',
+    cardId
+  )!;
+  if (row.total === 0) {
+    db.runSync('UPDATE kanban_cards SET check_done = NULL, check_total = NULL WHERE id = ?', cardId);
+  } else {
+    db.runSync('UPDATE kanban_cards SET check_done = ?, check_total = ? WHERE id = ?', row.done, row.total, cardId);
+  }
+}
+
 export const useWork = create<WorkState>((set, get) => ({
   projects: [],
   activeProject: null,
@@ -135,11 +176,13 @@ export const useWork = create<WorkState>((set, get) => ({
   memos: [],
   minutes: [],
   sops: [],
+  checklist: [],
+  cardEvents: [],
 
   load: () => {
     const projRows = db.getAllSync<any>('SELECT * FROM projects ORDER BY id');
     const projects: Project[] = projRows.map((r) => ({
-      id: r.id, name: r.name, deadline: r.deadline, isActive: !!r.is_active,
+      id: r.id, name: r.name, deadline: r.deadline, isActive: !!r.is_active, coverUri: r.cover_uri,
     }));
     const active = projects.find((p) => p.isActive) ?? projects[0] ?? null;
     const pid = active?.id ?? -1;
@@ -152,6 +195,14 @@ export const useWork = create<WorkState>((set, get) => ({
     const memoRows = db.getAllSync<any>('SELECT * FROM memos ORDER BY created_at DESC');
     const minuteRows = db.getAllSync<any>('SELECT * FROM minutes ORDER BY date DESC');
     const sopRows = db.getAllSync<any>('SELECT * FROM sop_templates ORDER BY id');
+    const checklistRows = db.getAllSync<any>(
+      `SELECT cci.* FROM card_checklist_items cci
+       JOIN kanban_cards kc ON kc.id = cci.card_id
+       WHERE kc.project_id = ? ORDER BY cci.card_id, cci.sort, cci.id`, pid
+    );
+    const eventRows = db.getAllSync<any>(
+      'SELECT * FROM card_events WHERE project_id = ? ORDER BY changed_at DESC', pid
+    );
 
     set({
       projects,
@@ -185,12 +236,22 @@ export const useWork = create<WorkState>((set, get) => ({
       sops: sopRows.map((r) => ({
         id: r.id, name: r.name, icon: r.icon, items: parseJson<string[]>(r.items_json, []),
       })),
+      checklist: checklistRows.map((r) => ({
+        id: r.id, cardId: r.card_id, text: r.text, done: !!r.done, sort: r.sort,
+      })),
+      cardEvents: eventRows.map((r) => ({
+        id: r.id, cardId: r.card_id, projectId: r.project_id,
+        fromCol: r.from_col as ColKey | null, toCol: r.to_col as ColKey, changedAt: r.changed_at,
+      })),
     });
   },
 
-  addProject: (name, deadline) => {
+  addProject: (name, deadline, coverUri) => {
     db.runSync('UPDATE projects SET is_active = 0');
-    db.runSync('INSERT INTO projects (name, deadline, is_active) VALUES (?,?,1)', name, deadline);
+    db.runSync(
+      'INSERT INTO projects (name, deadline, is_active, cover_uri) VALUES (?,?,1,?)',
+      name, deadline, coverUri
+    );
     get().load();
   },
 
@@ -201,7 +262,14 @@ export const useWork = create<WorkState>((set, get) => ({
   },
 
   moveCard: (id, col) => {
+    const card = get().cards.find((c) => c.id === id);
     db.runSync('UPDATE kanban_cards SET col = ?, overdue = 0 WHERE id = ?', col, id);
+    if (card) {
+      db.runSync(
+        'INSERT INTO card_events (card_id, project_id, from_col, to_col, changed_at) VALUES (?,?,?,?,?)',
+        id, card.projectId, card.col, col, Date.now()
+      );
+    }
     get().load();
   },
 
@@ -222,11 +290,61 @@ export const useWork = create<WorkState>((set, get) => ({
       "INSERT INTO kanban_cards (project_id, col, title, labels_json, prio, due, who, sort) VALUES (?,?,?,'[]','low',NULL,?,?)",
       pid, col, title, who, (maxSort?.m ?? 0) + 1
     );
+    const inserted = db.getFirstSync<{ id: number }>('SELECT last_insert_rowid() AS id')!;
+    db.runSync(
+      'INSERT INTO card_events (card_id, project_id, from_col, to_col, changed_at) VALUES (?,?,NULL,?,?)',
+      inserted.id, pid, col, Date.now()
+    );
+    get().load();
+  },
+
+  updateCard: (id, patch) => {
+    const card = get().cards.find((c) => c.id === id);
+    if (!card) return;
+    db.runSync(
+      'UPDATE kanban_cards SET title = ?, labels_json = ?, prio = ?, due = ?, who = ? WHERE id = ?',
+      patch.title ?? card.title,
+      JSON.stringify(patch.labels ?? card.labels),
+      patch.prio ?? card.prio,
+      patch.due !== undefined ? patch.due : card.due,
+      patch.who ?? card.who,
+      id
+    );
     get().load();
   },
 
   deleteCard: (id) => {
+    db.runSync('DELETE FROM card_checklist_items WHERE card_id = ?', id);
+    db.runSync('DELETE FROM card_events WHERE card_id = ?', id);
     db.runSync('DELETE FROM kanban_cards WHERE id = ?', id);
+    get().load();
+  },
+
+  addChecklistItem: (cardId, text) => {
+    const maxSort = db.getFirstSync<{ m: number }>(
+      'SELECT COALESCE(MAX(sort), 0) AS m FROM card_checklist_items WHERE card_id = ?', cardId
+    )!.m;
+    db.runSync(
+      'INSERT INTO card_checklist_items (card_id, text, done, sort) VALUES (?,?,0,?)',
+      cardId, text, maxSort + 1
+    );
+    recomputeChecklistCounts(cardId);
+    get().load();
+  },
+
+  toggleChecklistItem: (id) => {
+    const item = get().checklist.find((i) => i.id === id);
+    if (!item) return;
+    db.runSync('UPDATE card_checklist_items SET done = ? WHERE id = ?', item.done ? 0 : 1, id);
+    recomputeChecklistCounts(item.cardId);
+    get().load();
+  },
+
+  deleteChecklistItem: (id) => {
+    const item = get().checklist.find((i) => i.id === id);
+    if (!item) return;
+    db.runSync('DELETE FROM card_checklist_items WHERE id = ?', id);
+    recomputeChecklistCounts(item.cardId);
     get().load();
   },
 
@@ -319,5 +437,26 @@ export const useWork = create<WorkState>((set, get) => ({
     }
     get().load();
     return sop.name;
+  },
+
+  addSopTemplate: (name, icon, items) => {
+    db.runSync(
+      'INSERT INTO sop_templates (name, icon, items_json) VALUES (?,?,?)',
+      name, icon, JSON.stringify(items)
+    );
+    get().load();
+  },
+
+  updateSopTemplate: (id, name, icon, items) => {
+    db.runSync(
+      'UPDATE sop_templates SET name = ?, icon = ?, items_json = ? WHERE id = ?',
+      name, icon, JSON.stringify(items), id
+    );
+    get().load();
+  },
+
+  deleteSopTemplate: (id) => {
+    db.runSync('DELETE FROM sop_templates WHERE id = ?', id);
+    get().load();
   },
 }));

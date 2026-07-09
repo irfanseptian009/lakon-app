@@ -156,6 +156,7 @@ export function PackingSystem({ go }: ScreenProps) {
         {t('pack.preTrip')}
       </SectionTitle>
       <View style={{ gap: 8 }}>
+        {pretrip.length === 0 && <EmptyState icon="check" text={t('pack.emptyTasks')} />}
         {pretrip.map((task) => (
           <Pressable
             key={task.id}

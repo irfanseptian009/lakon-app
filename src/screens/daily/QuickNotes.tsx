@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useI18n } from '@/i18n/useI18n';
 import type { ScreenProps } from '@/shell/AppShell';
 import { Note, useDaily } from '@/stores/dailyStore';
@@ -47,6 +47,13 @@ export function QuickNotes(_: ScreenProps) {
     if (!text) return;
     addNote(text, cat);
     setVal('');
+  };
+
+  const confirmDelete = (id: number) => {
+    Alert.alert(t('common.delete'), t('common.confirmDelete'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => deleteNote(id) },
+    ]);
   };
 
   return (
@@ -158,7 +165,7 @@ export function QuickNotes(_: ScreenProps) {
               icon="trash"
               size={34}
               variant="ghost"
-              onPress={() => deleteNote(n.id)}
+              onPress={() => confirmDelete(n.id)}
               accessibilityLabel={t('common.delete')}
             />
           </View>

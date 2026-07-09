@@ -105,6 +105,12 @@ export function Timeline({ go }: ScreenProps) {
         right={<IconButton icon="plus" variant="dark" onPress={() => setAdding(true)} accessibilityLabel={t('tl.addMilestone')} />}
       />
 
+      {milestones.length > 0 && (
+        <Txt size={11.5} color={c.textMuted} style={{ marginBottom: 10 }}>
+          {t('common.holdToDelete')}
+        </Txt>
+      )}
+
       {/* mini gantt */}
       <Card tone="dark" pad="lg" radius="xl">
         <Txt size={12} weight="bold" color={c.textOnDarkMuted} style={{ marginBottom: 14 }}>
@@ -179,7 +185,7 @@ export function Timeline({ go }: ScreenProps) {
                       {fmtDate(m.date)}
                     </Txt>
                   </View>
-                  {(m.notifIds?.length || m.status === 'active') && (
+                  {!!m.notifIds?.length && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                       <Icon name="bell" size={13} color={st.amber500} />
                       <Txt size={12} weight="bold" color={c.warningFg}>

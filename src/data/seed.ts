@@ -28,6 +28,7 @@ export function wipeAll() {
     DELETE FROM pretrip_tasks; DELETE FROM budget_cats; DELETE FROM expenses;
     DELETE FROM fx_rates; DELETE FROM documents; DELETE FROM comp_groups;
     DELETE FROM comp_options; DELETE FROM projects; DELETE FROM kanban_cards;
+    DELETE FROM card_checklist_items; DELETE FROM card_events;
     DELETE FROM milestones; DELETE FROM contacts; DELETE FROM memos;
     DELETE FROM minutes;
   `);

@@ -62,7 +62,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Lakon copies selected screenshots and brochures into its offline sandbox."
+          "photosPermission": "Lakon copies selected photos (profile picture, project covers, screenshots, brochures) into its offline sandbox."
         }
       ],
       "expo-notifications",

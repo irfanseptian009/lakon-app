@@ -9,6 +9,7 @@ interface SettingsState {
   theme: ThemeMode;
   lang: Lang;
   userName: string;
+  avatarUri: string;
   biometric: boolean;
   autoLock: boolean;
   notif: boolean;
@@ -18,6 +19,7 @@ interface SettingsState {
   setTheme: (t: ThemeMode) => void;
   setLang: (l: Lang) => void;
   setUserName: (n: string) => void;
+  setAvatarUri: (uri: string) => void;
   setBiometric: (v: boolean) => void;
   setAutoLock: (v: boolean) => void;
   setNotif: (v: boolean) => void;
@@ -33,6 +35,7 @@ export const useSettings = create<SettingsState>((set) => {
     theme: 'light',
     lang: 'id',
     userName: '',
+    avatarUri: '',
     biometric: false,
     autoLock: false,
     notif: true,
@@ -45,6 +48,7 @@ export const useSettings = create<SettingsState>((set) => {
         theme: (getSetting('theme') as ThemeMode) || 'light',
         lang: (getSetting('lang') as Lang) || 'id',
         userName: getSetting('userName') || '',
+        avatarUri: getSetting('avatarUri') || '',
         biometric: getSetting('biometric') === '1',
         autoLock: getSetting('autoLock') === '1',
         notif: getSetting('notif') !== '0',
@@ -63,6 +67,10 @@ export const useSettings = create<SettingsState>((set) => {
     setUserName: (userName) => {
       persist('userName', userName);
       set({ userName });
+    },
+    setAvatarUri: (avatarUri) => {
+      persist('avatarUri', avatarUri);
+      set({ avatarUri });
     },
     setBiometric: (v) => {
       persist('biometric', v ? '1' : '0');

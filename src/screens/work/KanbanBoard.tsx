@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useI18n } from '@/i18n/useI18n';
+import type { TKey } from '@/i18n/translations';
 import type { ScreenProps } from '@/shell/AppShell';
 import { useSettings } from '@/stores/appStore';
 import { ColKey, KanbanCard, useWork } from '@/stores/workStore';
@@ -8,10 +9,12 @@ import { useTheme } from '@/theme/ThemeContext';
 import { font, ink, radius, shadows, space, status } from '@/theme/tokens';
 import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
-import { EmptyState, Eyebrow } from '@/ui/common';
+import { CheckBox, EmptyState, Eyebrow } from '@/ui/common';
+import { Chip } from '@/ui/Chip';
 import { Icon } from '@/ui/Icon';
 import { IconButton } from '@/ui/IconButton';
 import { Input } from '@/ui/Input';
+import { SegmentedControl } from '@/ui/SegmentedControl';
 import { Sheet } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
 
@@ -205,12 +208,60 @@ function AddCard({ onAdd }: { onAdd: (title: string) => void }) {
 
 export function KanbanBoard({ go }: ScreenProps) {
   const { c } = useTheme();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const userName = useSettings((s) => s.userName);
-  const { activeProject, cards, advanceCard, moveCard, addCard, deleteCard } = useWork();
+  const {
+    activeProject, cards, advanceCard, moveCard, addCard, updateCard, deleteCard,
+    checklist, addChecklistItem, toggleChecklistItem, deleteChecklistItem, cardEvents,
+  } = useWork();
   const [held, setHeld] = useState<KanbanCard | null>(null);
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
+
+  const [editingCard, setEditingCard] = useState<KanbanCard | null>(null);
+  const [editForm, setEditForm] = useState<{ title: string; labels: string[]; prio: KanbanCard['prio']; due: string; who: string }>({
+    title: '', labels: [], prio: 'low', due: '', who: '',
+  });
+  const [checklistDraft, setChecklistDraft] = useState('');
+
+  const openEdit = () => {
+    if (!held) return;
+    setEditForm({ title: held.title, labels: held.labels, prio: held.prio, due: held.due ?? '', who: held.who });
+    setEditingCard(held);
+    setChecklistDraft('');
+    setHeld(null);
+  };
+
+  const toggleLabel = (k: string) => {
+    setEditForm((f) => ({
+      ...f,
+      labels: f.labels.includes(k) ? f.labels.filter((l) => l !== k) : [...f.labels, k],
+    }));
+  };
+
+  const submitEdit = () => {
+    if (!editingCard) return;
+    updateCard(editingCard.id, {
+      title: editForm.title.trim() || editingCard.title,
+      labels: editForm.labels,
+      prio: editForm.prio,
+      due: editForm.due.trim() || null,
+      who: editForm.who.trim(),
+    });
+    setEditingCard(null);
+  };
+
+  const addChecklistDraft = () => {
+    const v = checklistDraft.trim();
+    if (!v || !editingCard) return;
+    addChecklistItem(editingCard.id, v);
+    setChecklistDraft('');
+  };
+
+  const formatEventDate = (ms: number) =>
+    new Date(ms).toLocaleString(lang === 'id' ? 'id-ID' : 'en-US', {
+      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
 
   const COLS: { key: ColKey; label: string; accent: string; wip: number | null }[] = [
     { key: 'todo', label: t('kanban.col.todo'), accent: c.borderStrong, wip: null },
@@ -320,6 +371,23 @@ export function KanbanBoard({ go }: ScreenProps) {
 
       {/* move / delete sheet (long-press) */}
       <Sheet visible={!!held} onClose={() => setHeld(null)} title={held?.title ?? ''}>
+        <Pressable
+          onPress={openEdit}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            padding: 14,
+            borderRadius: radius.md,
+            backgroundColor: c.lime100,
+            marginBottom: 14,
+          }}
+        >
+          <Icon name="pencil" size={16} color={c.limeText} />
+          <Txt size={14.5} weight="bold" color={c.limeText}>
+            {t('common.edit')}
+          </Txt>
+        </Pressable>
         <Txt size={12} weight="black" color={c.textMuted} caps style={{ marginBottom: 10 }}>
           {t('kanban.moveTo')}
         </Txt>
@@ -367,6 +435,136 @@ export function KanbanBoard({ go }: ScreenProps) {
             </Txt>
           </Pressable>
         </View>
+      </Sheet>
+
+      {/* card edit sheet */}
+      <Sheet visible={!!editingCard} onClose={() => setEditingCard(null)} title={t('kanban.editCard')}>
+        {editingCard && (
+          <>
+            <Input
+              label={t('kanban.cardTitle')}
+              value={editForm.title}
+              onChangeText={(v) => setEditForm((f) => ({ ...f, title: v }))}
+            />
+            <View style={{ height: 14 }} />
+            <Txt size={12} weight="black" color={c.textMuted} caps style={{ marginBottom: 8 }}>
+              {t('kanban.labels')}
+            </Txt>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {Object.keys(LABEL_META).map((k) => (
+                <Chip
+                  key={k}
+                  tone="accent"
+                  selected={editForm.labels.includes(k)}
+                  onPress={() => toggleLabel(k)}
+                >
+                  {LABEL_META[k].text}
+                </Chip>
+              ))}
+            </View>
+            <View style={{ height: 16 }} />
+            <Txt size={12} weight="black" color={c.textMuted} caps style={{ marginBottom: 8 }}>
+              {t('kanban.priority')}
+            </Txt>
+            <SegmentedControl
+              full
+              value={editForm.prio}
+              onChange={(v) => setEditForm((f) => ({ ...f, prio: v }))}
+              options={[
+                { value: 'low', label: t('kanban.prio.low') },
+                { value: 'med', label: t('kanban.prio.med') },
+                { value: 'high', label: t('kanban.prio.high') },
+              ]}
+            />
+            <View style={{ height: 16 }} />
+            <Input
+              label={t('kanban.due')}
+              value={editForm.due}
+              onChangeText={(v) => setEditForm((f) => ({ ...f, due: v }))}
+              placeholder="2026-07-20"
+            />
+            <View style={{ height: 12 }} />
+            <Input
+              label={t('kanban.assignee')}
+              value={editForm.who}
+              onChangeText={(v) => setEditForm((f) => ({ ...f, who: v }))}
+            />
+            <View style={{ height: 16 }} />
+
+            <Txt size={12} weight="black" color={c.textMuted} caps style={{ marginBottom: 8 }}>
+              {t('kanban.checklist')}
+            </Txt>
+            {checklist.filter((i) => i.cardId === editingCard.id).length === 0 && (
+              <Txt size={13} color={c.textMuted} style={{ marginBottom: 8 }}>
+                {t('kanban.checklistEmpty')}
+              </Txt>
+            )}
+            <View style={{ gap: 8 }}>
+              {checklist
+                .filter((i) => i.cardId === editingCard.id)
+                .map((item) => (
+                  <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <CheckBox checked={item.done} onPress={() => toggleChecklistItem(item.id)} />
+                    <Txt
+                      size={14}
+                      color={item.done ? c.textMuted : c.textStrong}
+                      style={{ flex: 1, textDecorationLine: item.done ? 'line-through' : 'none' }}
+                    >
+                      {item.text}
+                    </Txt>
+                    <IconButton
+                      icon="trash"
+                      size={30}
+                      variant="ghost"
+                      onPress={() => deleteChecklistItem(item.id)}
+                      accessibilityLabel={t('common.delete')}
+                    />
+                  </View>
+                ))}
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    placeholder={t('kanban.checklistAdd')}
+                    value={checklistDraft}
+                    onChangeText={setChecklistDraft}
+                    onSubmitEditing={addChecklistDraft}
+                  />
+                </View>
+                <IconButton icon="plus" size={44} variant="lime" onPress={addChecklistDraft} accessibilityLabel={t('common.add')} />
+              </View>
+            </View>
+            <View style={{ height: 20 }} />
+
+            <Txt size={12} weight="black" color={c.textMuted} caps style={{ marginBottom: 8 }}>
+              {t('kanban.history')}
+            </Txt>
+            {cardEvents.filter((e) => e.cardId === editingCard.id).length === 0 ? (
+              <Txt size={13} color={c.textMuted}>{t('kanban.historyEmpty')}</Txt>
+            ) : (
+              <View style={{ gap: 8 }}>
+                {cardEvents
+                  .filter((e) => e.cardId === editingCard.id)
+                  .map((e) => (
+                    <View key={e.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Icon name="clock" size={13} color={c.textMuted} />
+                      <Txt size={12.5} color={c.textBody} style={{ flex: 1 }}>
+                        {e.fromCol == null
+                          ? t('kanban.historyCreated', { col: t(`kanban.col.${e.toCol}` as TKey) })
+                          : `${t(`kanban.col.${e.fromCol}` as TKey)} → ${t(`kanban.col.${e.toCol}` as TKey)}`}
+                        {' · '}
+                        {formatEventDate(e.changedAt)}
+                      </Txt>
+                    </View>
+                  ))}
+              </View>
+            )}
+
+            <View style={{ height: 20 }} />
+            <Button variant="primary" full icon="check" onPress={submitEdit}>
+              {t('common.save')}
+            </Button>
+          </>
+        )}
       </Sheet>
     </View>
   );

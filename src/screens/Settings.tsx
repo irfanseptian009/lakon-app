@@ -4,6 +4,7 @@ import { useI18n } from '@/i18n/useI18n';
 import { wipeAll } from '@/data/seed';
 import { createBackup, restoreBackup } from '@/services/backup';
 import { biometricAvailable } from '@/services/biometric';
+import { deleteSandboxFile, pickAndCacheImage } from '@/services/media';
 import { generateReport, shareFile } from '@/services/pdf';
 import { useSettings } from '@/stores/appStore';
 import { useDaily } from '@/stores/dailyStore';
@@ -11,6 +12,7 @@ import { useTravel } from '@/stores/travelStore';
 import { useWork } from '@/stores/workStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { ink, radius, shadows, space } from '@/theme/tokens';
+import { Avatar } from '@/ui/Avatar';
 import { Badge } from '@/ui/Badge';
 import { Icon, IconName } from '@/ui/Icon';
 import { IconButton } from '@/ui/IconButton';
@@ -112,13 +114,14 @@ export function SettingsScreen({ onClose, onLock }: { onClose: () => void; onLoc
   const [nameDraft, setNameDraft] = useState(s.userName);
   const [busy, setBusy] = useState(false);
 
-  const initials = s.userName
-    .split(' ')
-    .map((w) => w[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  const pickPhoto = async () => {
+    const uri = await pickAndCacheImage('avatar');
+    if (uri) {
+      const old = s.avatarUri;
+      s.setAvatarUri(uri);
+      deleteSandboxFile(old || null);
+    }
+  };
 
   const toggleBiometric = async (v: boolean) => {
     if (v && !(await biometricAvailable())) {
@@ -218,11 +221,7 @@ export function SettingsScreen({ onClose, onLock }: { onClose: () => void; onLoc
       </View>
 
       {/* profile card */}
-      <Pressable
-        onPress={() => {
-          setNameDraft(s.userName);
-          setEditName(true);
-        }}
+      <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -232,32 +231,44 @@ export function SettingsScreen({ onClose, onLock }: { onClose: () => void; onLoc
           padding: 18,
         }}
       >
-        <View
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: c.accent,
-            alignItems: 'center',
-            justifyContent: 'center',
+        <Pressable onPress={pickPhoto} accessibilityLabel={t('set.changePhoto')} style={{ width: 56, height: 56 }}>
+          <Avatar name={s.userName} uri={s.avatarUri} size={56} />
+          <View
+            style={{
+              position: 'absolute',
+              bottom: -2,
+              right: -2,
+              width: 22,
+              height: 22,
+              borderRadius: 11,
+              backgroundColor: c.accent,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 2,
+              borderColor: c.surfaceInverse,
+            }}
+          >
+            <Icon name="camera" size={12} color={ink[900]} />
+          </View>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            setNameDraft(s.userName);
+            setEditName(true);
           }}
+          style={{ flex: 1 }}
         >
-          <Txt size={22} weight="black" color={ink[900]}>
-            {initials}
-          </Txt>
-        </View>
-        <View style={{ flex: 1 }}>
           <Txt size={17} weight="black" color={c.textOnDark}>
             {s.userName}
           </Txt>
           <Txt size={12.5} color={c.textOnDarkMuted} style={{ marginTop: 2 }}>
             {t('set.localAccount')}
           </Txt>
-        </View>
+        </Pressable>
         <Badge tone="success" icon="lock">
           {t('set.private')}
         </Badge>
-      </Pressable>
+      </View>
 
       <Group title={t('set.privacy')}>
         <Row

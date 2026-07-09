@@ -85,6 +85,7 @@ export function TripDashboard({ go }: ScreenProps) {
   const { c } = useTheme();
   const { t } = useI18n();
   const userName = useSettings((s) => s.userName);
+  const avatarUri = useSettings((s) => s.avatarUri);
   const { trip, packing, pretrip, itinerary, addTrip } = useTravel();
   // snapshot the clock once per mount so render stays pure
   const [now] = useState(() => Date.now());
@@ -134,7 +135,7 @@ export function TripDashboard({ go }: ScreenProps) {
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Avatar name={userName} size={48} status="accent" />
+          <Avatar name={userName} uri={avatarUri} size={48} status="accent" />
           <View>
             <Txt size={13} weight="semibold" color={c.textMuted}>
               {greeting}

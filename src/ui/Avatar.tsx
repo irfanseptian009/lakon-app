@@ -1,19 +1,22 @@
+import { Image } from 'expo-image';
 import React from 'react';
 import { View, ViewStyle } from 'react-native';
 import { useTheme } from '@/theme/ThemeContext';
 import { status } from '@/theme/tokens';
 import { Txt } from './Txt';
 
-/** Initials avatar with optional presence/status dot. */
+/** Initials avatar with optional presence/status dot, or a photo when `uri` is set. */
 export function Avatar({
   name = '',
   size = 44,
   status: statusKind,
+  uri,
   style,
 }: {
   name?: string;
   size?: number;
   status?: 'online' | 'accent';
+  uri?: string | null;
   style?: ViewStyle;
 }) {
   const { c } = useTheme();
@@ -34,13 +37,18 @@ export function Avatar({
           height: size,
           borderRadius: size / 2,
           backgroundColor: c.controlTrack,
+          overflow: 'hidden',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Txt size={size * 0.36} weight="bold" color={c.textMuted}>
-          {initials}
-        </Txt>
+        {uri ? (
+          <Image source={{ uri }} style={{ width: size, height: size }} contentFit="cover" />
+        ) : (
+          <Txt size={size * 0.36} weight="bold" color={c.textMuted}>
+            {initials}
+          </Txt>
+        )}
       </View>
       {statusKind && (
         <View

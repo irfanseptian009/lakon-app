@@ -122,7 +122,7 @@ export function ItineraryBuilder(_: ScreenProps) {
   const [form, setForm] = useState({ title: '', place: '', time: '', pnr: '', gate: '', accent: false });
 
   const days = trip?.days ?? 3;
-  const dayOptions = Array.from({ length: Math.min(days, 5) }, (_, i) => ({
+  const dayOptions = Array.from({ length: days }, (_, i) => ({
     value: String(i + 1),
     label: t('itin.day', { n: i + 1 }),
   }));
@@ -189,13 +189,19 @@ export function ItineraryBuilder(_: ScreenProps) {
       </View>
 
       {/* day tabs */}
-      <SegmentedControl
-        full
-        tone="dark"
-        options={dayOptions}
-        value={String(day)}
-        onChange={(v) => setDay(Number(v))}
-      />
+      {days > 5 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <SegmentedControl tone="dark" options={dayOptions} value={String(day)} onChange={(v) => setDay(Number(v))} />
+        </ScrollView>
+      ) : (
+        <SegmentedControl
+          full
+          tone="dark"
+          options={dayOptions}
+          value={String(day)}
+          onChange={(v) => setDay(Number(v))}
+        />
+      )}
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 18, marginBottom: 14 }}>
         <Txt size={15} weight="black" color={c.textStrong}>

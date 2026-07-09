@@ -29,6 +29,7 @@ export function DailyToday({ go }: ScreenProps) {
   const { c } = useTheme();
   const { t, lang } = useI18n();
   const userName = useSettings((s) => s.userName);
+  const avatarUri = useSettings((s) => s.avatarUri);
   const { habits, agenda, toggleAgenda, deleteAgenda, addAgenda } = useDaily();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
@@ -87,7 +88,7 @@ export function DailyToday({ go }: ScreenProps) {
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Avatar name={userName} size={48} status="accent" />
+          <Avatar name={userName} uri={avatarUri} size={48} status="accent" />
           <View>
             <Txt size={13} weight="semibold" color={c.textMuted}>
               {dateLabel}

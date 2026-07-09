@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useI18n } from '@/i18n/useI18n';
 import type { ScreenProps } from '@/shell/AppShell';
-import { BudgetCat, useTravel } from '@/stores/travelStore';
+import { BudgetCat, Expense, useTravel } from '@/stores/travelStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { ink, radius, shadows, space, white } from '@/theme/tokens';
 import { Badge } from '@/ui/Badge';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
-import { Eyebrow, SectionTitle } from '@/ui/common';
+import { EmptyState, Eyebrow, SectionTitle } from '@/ui/common';
 import { Icon } from '@/ui/Icon';
 import { IconButton } from '@/ui/IconButton';
 import { Input } from '@/ui/Input';
@@ -58,7 +58,7 @@ function Donut({ cats, useActual, size = 120 }: { cats: BudgetCat[]; useActual: 
 export function FinanceTracker(_: ScreenProps) {
   const { c } = useTheme();
   const { t } = useI18n();
-  const { trip, cats, fxRate, addExpense, setCatEst, setFxRate } = useTravel();
+  const { trip, cats, expenses, fxRate, addExpense, deleteExpense, setCatEst, setFxRate } = useTravel();
   const [view, setView] = useState<'estimated' | 'actual'>('actual');
   const [addingExp, setAddingExp] = useState(false);
   const [editingRate, setEditingRate] = useState(false);
@@ -92,6 +92,13 @@ export function FinanceTracker(_: ScreenProps) {
     const v = Number(estDraft.replace(/[^\d]/g, ''));
     if (v > 0) setCatEst(editingCat.id, v);
     setEditingCat(null);
+  };
+
+  const confirmDeleteExpense = (e: Expense) => {
+    Alert.alert(e.name, t('common.confirmDelete'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => deleteExpense(e.id) },
+    ]);
   };
 
   return (
@@ -225,6 +232,51 @@ export function FinanceTracker(_: ScreenProps) {
           );
         })}
       </View>
+
+      {/* recent expenses */}
+      <SectionTitle style={{ marginTop: 22, marginBottom: 12 }}>{t('fin.recentExpenses')}</SectionTitle>
+      {expenses.length === 0 ? (
+        <EmptyState icon="wallet" text={t('fin.noExpenses')} />
+      ) : (
+        <View style={{ gap: 8 }}>
+          {expenses.slice(0, 10).map((e) => {
+            const cat = cats.find((ct) => ct.id === e.catId);
+            return (
+              <Pressable
+                key={e.id}
+                onLongPress={() => confirmDeleteExpense(e)}
+                style={[
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                    backgroundColor: c.surfaceCard,
+                    borderWidth: 1,
+                    borderColor: c.borderSubtle,
+                    borderRadius: radius.md,
+                    padding: 12,
+                  },
+                  shadows.xs,
+                ]}
+              >
+                {cat && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: cat.color }} />}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Txt size={14} weight="bold" color={c.textStrong} numberOfLines={1}>
+                    {e.name}
+                  </Txt>
+                  <Txt size={11.5} color={c.textMuted}>
+                    {cat?.name ?? ''}
+                  </Txt>
+                </View>
+                <Txt size={13.5} weight="monoBold" color={c.textStrong}>
+                  {e.currency === 'IDR' ? 'Rp ' : `${e.currency} `}
+                  {e.amount.toLocaleString('id-ID')}
+                </Txt>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
 
       {/* manual exchange rate */}
       <Pressable onPress={() => {

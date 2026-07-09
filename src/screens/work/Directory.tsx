@@ -94,12 +94,17 @@ export function Directory({ go }: ScreenProps) {
 
       <Input icon="search" shape="pill" placeholder={t('dir.search')} value={query} onChangeText={setQuery} />
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, marginBottom: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, marginBottom: 6 }}>
         <Icon name="lock" size={13} color={c.textMuted} />
         <Txt size={12} weight="semibold" color={c.textMuted}>
           {t('dir.isolated')}
         </Txt>
       </View>
+      {filtered.length > 0 && (
+        <Txt size={11.5} color={c.textMuted} style={{ marginBottom: 8 }}>
+          {t('common.holdToDelete')}
+        </Txt>
+      )}
 
       <View style={{ gap: 10 }}>
         {filtered.length === 0 && <EmptyState icon="user" text={t('dir.empty')} />}
@@ -149,7 +154,7 @@ export function Directory({ go }: ScreenProps) {
               size={36}
               variant="ghost"
               onPress={() => call(contact.phone)}
-              accessibilityLabel="Hubungi"
+              accessibilityLabel={t('dir.call')}
             />
           </Pressable>
         ))}

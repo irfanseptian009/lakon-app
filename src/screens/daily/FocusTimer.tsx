@@ -121,11 +121,11 @@ export function FocusTimer({ go }: ScreenProps) {
               setLeft(total);
               setRunning(false);
             }}
-            accessibilityLabel="Reset"
+            accessibilityLabel={t('focus.resetLabel')}
           />
           <Pressable
             onPress={() => setRunning((r) => !r)}
-            accessibilityLabel={running ? 'Jeda' : 'Mulai'}
+            accessibilityLabel={running ? t('focus.pauseLabel') : t('focus.startLabel')}
             style={[
               {
                 width: 76,
@@ -140,7 +140,7 @@ export function FocusTimer({ go }: ScreenProps) {
           >
             <Icon name={running ? 'pause' : 'play'} size={30} color={c.accent} />
           </Pressable>
-          <IconButton icon="skip-forward" variant="ghost" size={52} onPress={skip} accessibilityLabel="Lewati" />
+          <IconButton icon="skip-forward" variant="ghost" size={52} onPress={skip} accessibilityLabel={t('focus.skipLabel')} />
         </View>
 
         {/* session dots */}

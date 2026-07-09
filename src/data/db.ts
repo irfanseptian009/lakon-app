@@ -153,7 +153,8 @@ export function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       deadline TEXT,
-      is_active INTEGER NOT NULL DEFAULT 0
+      is_active INTEGER NOT NULL DEFAULT 0,
+      cover_uri TEXT
     );
     CREATE TABLE IF NOT EXISTS kanban_cards (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -168,6 +169,21 @@ export function initDb() {
       check_total INTEGER,
       overdue INTEGER NOT NULL DEFAULT 0,
       sort INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS card_checklist_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      card_id INTEGER NOT NULL,
+      text TEXT NOT NULL,
+      done INTEGER NOT NULL DEFAULT 0,
+      sort INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS card_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      card_id INTEGER NOT NULL,
+      project_id INTEGER NOT NULL,
+      from_col TEXT,
+      to_col TEXT NOT NULL,
+      changed_at INTEGER NOT NULL
     );
     CREATE TABLE IF NOT EXISTS milestones (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -211,6 +227,16 @@ export function initDb() {
       items_json TEXT NOT NULL DEFAULT '[]'
     );
   `);
+  migrateAddColumn('projects', 'cover_uri', 'TEXT');
+}
+
+/** Add a column to an existing table if it's not already there. Safe to call every launch. */
+function migrateAddColumn(table: string, column: string, def: string) {
+  try {
+    db.execSync(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+  } catch {
+    // already migrated on a prior launch — ignore
+  }
 }
 
 /* ---------- tiny helpers ---------- */
